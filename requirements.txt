@@ -2,9 +2,8 @@
 streamlit
 pandas
 numpy
-
-# For date/time parsing
 python-dateutil
-
-# Optional but good for CSV and Excel handling
 openpyxl
+
+# Phone number parsing
+phonenumbers
