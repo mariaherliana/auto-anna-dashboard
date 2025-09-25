@@ -4,20 +4,44 @@ from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 import tempfile
 import os
+import uuid
+from datetime import datetime
 
-st.title("Call Charge Calculator (Dashboard csv)")
+st.title("Call Charge Calculator (Dashboard)")
 
+# ------------------------
 # Reset function
+# ------------------------
 def reset_form():
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
 
+# ------------------------
+# Initialize logs in session
+# ------------------------
+if "logs" not in st.session_state:
+    st.session_state["logs"] = []
+
+def add_log(client, file_name, status="Processed"):
+    log_id = str(uuid.uuid4())[:8]  # short unique ID
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = {
+        "Log ID": log_id,
+        "Tenant ID": client,
+        "File Name": file_name,
+        "Date Processed": now,
+        "Status": status,
+    }
+    st.session_state["logs"].append(log_entry)
+
+# ------------------------
 # Constants
+# ------------------------
 carriers = ["Atlasat", "Indosat", "Telkom", "Quiros", "MGM"]
 call_types = [
     "outbound call",
-    "predictive_dial",
+    "predictive dialer",
     "incoming call",
     "play_sound",
     "read_dtmf",
@@ -25,10 +49,14 @@ call_types = [
 ]
 rate_types = ["per_minute", "per_second"]
 
+# ------------------------
 # Upload CSV
+# ------------------------
 uploaded_file = st.file_uploader("Upload Dashboard CSV", type=["csv"], key="uploaded_file")
 
+# ------------------------
 # Form inputs
+# ------------------------
 st.subheader("Client Configuration")
 client = st.text_input("Client ID (required)", key="client")
 carrier = st.selectbox("Carrier (required)", carriers, index=0, key="carrier")
@@ -37,7 +65,7 @@ rate_type = st.selectbox("Rate Type", rate_types, index=0, key="rate_type")
 chargeable_call_types = st.multiselect(
     "Chargeable Call Types",
     call_types,
-    default=["outbound call", "predictive_dial"],
+    default=["outbound call", "predictive dialer"],
     key="chargeable_call_types"
 )
 
@@ -67,7 +95,9 @@ s2c = st.text_input("S2C Number (optional)", key="s2c")
 s2c_rate = st.number_input("S2C Rate", min_value=0.0, value=0.0, key="s2c_rate")
 s2c_rate_type = st.selectbox("S2C Rate Type", rate_types, index=0, key="s2c_rate_type")
 
+# ------------------------
 # Process button
+# ------------------------
 if uploaded_file and client and carrier:
     if st.button("Process File"):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
@@ -108,9 +138,36 @@ if uploaded_file and client and carrier:
                     mime="text/csv"
                 )
 
+            # Add log entry
+            add_log(client, uploaded_file.name)
+
             os.unlink(tmp_input.name)
             os.unlink(tmp_output.name)
 
+# ------------------------
 # Reset button
+# ------------------------
 if st.button("🔄 Reset Form"):
     reset_form()
+
+# ------------------------
+# Admin-only log section
+# ------------------------
+st.markdown("---")
+st.subheader("Admin Access")
+
+admin_pass = st.text_input("Enter admin password", type="password")
+
+if admin_pass == "supersecret":  # 🔒 Replace with env variable in production
+    with st.expander("📜 Processing Logs (Admin Only)"):
+        if st.session_state["logs"]:
+            df_logs = pd.DataFrame(st.session_state["logs"])
+            st.dataframe(df_logs, use_container_width=True)
+            st.download_button(
+                "⬇️ Download Logs as CSV",
+                df_logs.to_csv(index=False),
+                "processing_logs.csv",
+                "text/csv"
+            )
+        else:
+            st.info("No logs yet. Process a file to see history.")
