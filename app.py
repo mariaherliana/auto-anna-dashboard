@@ -5,7 +5,7 @@ from src.FileConfig import Files
 import tempfile
 import os
 
-st.title("Auto-Anna (Dashboard Only)")
+st.title("Call Charge Calculator (Dashboard csv)")
 
 # Reset function
 def reset_form():
@@ -17,7 +17,7 @@ def reset_form():
 carriers = ["Atlasat", "Indosat", "Telkom", "Quiros", "MGM"]
 call_types = [
     "outbound call",
-    "predictive dialer",
+    "predictive_dial",
     "incoming call",
     "play_sound",
     "read_dtmf",
@@ -37,7 +37,7 @@ rate_type = st.selectbox("Rate Type", rate_types, index=0, key="rate_type")
 chargeable_call_types = st.multiselect(
     "Chargeable Call Types",
     call_types,
-    default=["outbound call", "predictive dialer"],
+    default=["outbound call", "predictive_dial"],
     key="chargeable_call_types"
 )
 
