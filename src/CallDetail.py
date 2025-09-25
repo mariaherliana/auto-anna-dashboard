@@ -95,10 +95,9 @@ class CallDetail:
             rate = 1700 + (200 if self.is_enduser else 0)
             return self.calculate_per_minute_charge(rate)
 
-        # International call handling
-        carrier_key = config.carrier.title()  # Normalize the carrier name
-        rate_map = INTERNATIONAL_RATES.get(carrier_key, INTERNATIONAL_RATES["Atlasat"])
-
+        # International call handling (always using Indosat rates by default)
+        rate_map = INTERNATIONAL_RATES.get("Indosat", INTERNATIONAL_RATES["Atlasat"])
+        
         matched_key = next(
             (k for k in rate_map if k.lower() in number_type.lower() or number_type.lower() in k.lower()),
             None
