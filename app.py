@@ -10,12 +10,14 @@ from src.FileConfig import Files
 # ------------------------
 # Disclaimer
 # ------------------------
-st.info(
-    "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
-    "The results provided are **not final**, and **international calls** may increase the estimated number."
-)
+if page == "Calculator":
+    # Disclaimer only here
+    st.info(
+        "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
+        "The results provided are **not final**, and **international calls** may increase the estimated number."
+    )
 
-st.title("📞 Call Charge Calculator (Dashboard)")
+    st.title("📞 Call Charge Calculator (Dashboard)")
 
 # ------------------------
 # Reset function
