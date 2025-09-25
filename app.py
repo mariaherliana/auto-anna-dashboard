@@ -17,7 +17,9 @@ if page == "Calculator":
         "The results provided are **not final**, and **international calls** may increase the estimated number."
     )
 
-    st.title("📞 Call Charge Calculator (Dashboard)")
+    st.title("Call Charge Calculator (Dashboard)")
+
+st.title("📞 Call Charge Calculator (Dashboard)")
 
 # ------------------------
 # Reset function
