@@ -7,6 +7,14 @@ import os
 import uuid
 from datetime import datetime
 
+# ------------------------
+# Disclaimer
+# ------------------------
+st.info(
+    "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
+    "The results provided are **not final**, and **international calls** may increase the estimated number."
+)
+
 st.title("Call Charge Calculator (Dashboard)")
 
 # ------------------------
@@ -38,7 +46,6 @@ def add_log(client, file_name, status="Processed"):
 # ------------------------
 # Constants
 # ------------------------
-carriers = ["Atlasat", "Indosat", "Telkom", "Quiros", "MGM"]
 call_types = [
     "outbound call",
     "predictive dialer",
@@ -59,7 +66,6 @@ uploaded_file = st.file_uploader("Upload Dashboard CSV", type=["csv"], key="uplo
 # ------------------------
 st.subheader("Client Configuration")
 client = st.text_input("Client ID (required)", key="client")
-carrier = st.selectbox("Carrier (required)", carriers, index=0, key="carrier")
 rate = st.number_input("Rate (required)", min_value=0.0, value=720.0, key="rate")
 rate_type = st.selectbox("Rate Type", rate_types, index=0, key="rate_type")
 chargeable_call_types = st.multiselect(
@@ -98,17 +104,18 @@ s2c_rate_type = st.selectbox("S2C Rate Type", rate_types, index=0, key="s2c_rate
 # ------------------------
 # Process button
 # ------------------------
-if uploaded_file and client and carrier:
+if uploaded_file and client:
     if st.button("Process File"):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
             tmp_input.write(uploaded_file.read())
             tmp_input.flush()
 
+            # Always use Indosat by default
             config = Files(
                 client=client,
                 dashboard=tmp_input.name,
                 output="output.csv",
-                carrier=carrier,
+                carrier="Indosat",
                 number1=number1 if number1 else None,
                 number1_rate=number1_rate,
                 number1_rate_type=number1_rate_type,
@@ -125,7 +132,7 @@ if uploaded_file and client and carrier:
                 chargeable_call_types=chargeable_call_types,
             )
 
-            call_details = process_dashboard_csv(config.dashboard, config.carrier, client=config.client)
+            call_details = process_dashboard_csv(config.dashboard, "Indosat", client=config.client)
 
             tmp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
             save_merged_csv(call_details, tmp_output.name)
