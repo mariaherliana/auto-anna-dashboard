@@ -7,6 +7,13 @@ from datetime import datetime
 from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 
+st.set_page_config(
+    page_title="MiiTel CC Calculator",  # 👈 This changes the tab title
+    page_icon="📞",                       # 👈 Optional: add an emoji or favicon
+    layout="wide",                        # 👈 Optional: makes the app wider
+)
+
+
 # ------------------------
 # Setup
 # ------------------------
