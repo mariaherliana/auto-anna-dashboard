@@ -8,18 +8,10 @@ from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 
 # ------------------------
-# Disclaimer
+# Setup
 # ------------------------
-if page == "Calculator":
-    # Disclaimer only here
-    st.info(
-        "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
-        "The results provided are **not final**, and **international calls** may increase the estimated number."
-    )
-
-    st.title("Call Charge Calculator (Dashboard)")
-
-st.title("📞 Call Charge Calculator (Dashboard)")
+PROCESSED_DIR = "processed_files"
+os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 # ------------------------
 # Reset function
@@ -70,6 +62,14 @@ page = st.sidebar.radio("📂 Navigation", ["Calculator", "Admin Dashboard"])
 # Calculator Page
 # ------------------------
 if page == "Calculator":
+    # Disclaimer only here
+    st.info(
+        "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
+        "The results provided are **not final**, and **international calls** may increase the estimated number."
+    )
+
+    st.title("📞 Call Charge Calculator (Dashboard)")
+
     # Upload CSV
     uploaded_file = st.file_uploader("Upload Dashboard CSV", type=["csv"], key="uploaded_file")
 
@@ -142,22 +142,23 @@ if page == "Calculator":
 
                 call_details = process_dashboard_csv(config.dashboard, "Indosat", client=config.client)
 
-                tmp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
-                save_merged_csv(call_details, tmp_output.name)
+                # Save processed file persistently
+                processed_file_path = os.path.join(PROCESSED_DIR, f"{client}_processed_{uuid.uuid4().hex[:6]}.csv")
+                save_merged_csv(call_details, processed_file_path)
 
-                with open(tmp_output.name, "rb") as f:
+                # Download button for user
+                with open(processed_file_path, "rb") as f:
                     st.download_button(
-                        label="Download Processed CSV",
+                        label="⬇️ Download Processed CSV",
                         data=f,
                         file_name=f"{client}_processed.csv",
                         mime="text/csv"
                     )
 
                 # Add log entry
-                add_log(client, uploaded_file.name)
+                add_log(client, uploaded_file.name, processed_file_path)
 
                 os.unlink(tmp_input.name)
-                os.unlink(tmp_output.name)
 
     # Reset button
     if st.button("🔄 Reset Form"):
@@ -200,4 +201,3 @@ elif page == "Admin Dashboard":
             st.info("No logs yet. Process a file to see history.")
     else:
         st.warning("Invalid or missing admin password.")
-
