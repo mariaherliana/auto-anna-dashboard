@@ -241,7 +241,7 @@ if page == "Calculator":
                   "s2c", "s2c_rate", "uploaded_file"]:
             if k in st.session_state:
                 del st.session_state[k]
-        st.experimental_rerun()
+        st.rerun()
 
 # ------------------------
 # Request CDR Page
@@ -334,7 +334,7 @@ elif page == "Admin Dashboard":
                             if updated:
                                 st.success(f"Request {req_id} updated to '{new_status}'.")
                                 # re-run so table refreshes
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("Failed to update request (file may not exist).")
                         cols[3].write("")  # spacer
