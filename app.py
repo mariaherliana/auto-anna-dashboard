@@ -209,16 +209,17 @@ elif page == "Manual":
     st.title("📖 How to Use the Call Charge Calculator")
 
     steps = [
-        "Step 1: Make sure you have downloaded the **call history list CSV** from the MiiTel Analytics Dashboard.",
-        "Step 2: Upload the related CSV into the calculator.",
-        "Step 3: Input the **client info** and **call charge settings**.",
-        "Step 4: ⚠️ If you have **1 number with different rates** for different chargeable call types, you must input the number one by one and adjust the rate and chargeable call types.",
-        "Step 5: Make sure you set the **default rate correctly**.",
-        "Step 6: For charged incoming calls, please include both **incoming call** and **answering machine** in chargeable call types.",
-        "Step 7: If you don't have any special number or settings, just simply set the default rate.",
-        "Step 8: In the processed CSV, you will see: - **Round up duration (minutes)** → for per-minute users (rounded per call). - **Round up duration (seconds)** → for per-second users (total duration in seconds).",
-        "Step 9: ⚠️ For international calls, the amount from this calculator is only an **estimation**. The proper calculation can be requested from the **MiiTel FA team** through the Request CDR form.",
+        "Step 1: Download the call history CSV from the MiiTel Analytics Dashboard.",
+        "Step 2: Upload the CSV file into the calculator.",
+        "Step 3: Enter the client information and call charge settings.",
+        "Step 4: ⚠️ If one number has different rates for different call types, input the number separately for each rate and adjust the chargeable call types accordingly.",
+        "Step 5: Set the default rate correctly.",
+        "Step 6: For charged incoming calls, include both Incoming Call and Answering Machine as chargeable call types.",
+        "Step 7: If there are no special numbers or settings, simply use the default rate.",
+        "Step 8: In the processed CSV, you will find: - Round-up duration (minutes): for per-minute users (rounded per call). - Round-up duration (seconds): for per-second users (total duration in seconds).",
+        "Step 9: ⚠️ For international calls, this calculator only gives an estimate. The official calculation can be requested from the MiiTel FA team via the Request CDR form.",
     ]
+
 
 
     for step in steps:
