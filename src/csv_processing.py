@@ -39,8 +39,8 @@ def process_dashboard_csv(
             ringing_time=row.get("Ringing time", ""),
             call_duration=row.get("Call duration", ""),
             call_memo=row.get("Call memo", ""),
-            carrier=config.carrier,
-            config=config,
+            carrier=config.carrier,  # always Indosat
+            config=config,           # pass form config to CallDetail
         )
 
         key = call_detail.hash_key()
