@@ -37,6 +37,7 @@ class CallDetail:
         self.call_duration = parse_time_duration(call_duration)
         self.call_memo = parse_call_memo(call_memo)
         self.carrier = carrier
+        self.config = config
         self.number_type = classify_number(self.call_to, self.call_type, self.call_from, self.call_to)
         self.call_charge = self.calculate_call_charge()
 
@@ -78,7 +79,8 @@ class CallDetail:
         call_from = str(self.call_from or "").strip()
         call_type = (self.call_type or "").strip().lower()
         number_type = self.number_type.lower() if self.number_type else ""
-        chargeable_types = [ct.lower() for ct in config.chargeable_call_types] if config.chargeable_call_types else ["outbound call", "predictive_dial"]
+        chargeable_types = [ct.lower() for ct in self.config.chargeable_call_types] \
+    if self.config.chargeable_call_types else ["outbound call", "predictive_dial"]
 
         if not config:
             return self.calculate_per_minute_charge(720)
