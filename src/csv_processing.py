@@ -2,20 +2,29 @@ from typing import Optional
 import pandas as pd
 from src.CallDetail import CallDetail
 import math
+from src.FileConfig import Files
 
 
-def process_dashboard_csv(
-    file_path: str, carrier: str, call_details: Optional[dict[str, CallDetail]] = None, client: str = ""
-) -> dict[str, CallDetail]:
+def process_dashboard_csv(config: Files, call_details: Optional[dict[str, CallDetail]] = None) -> dict[str, CallDetail]:
+    """
+    Process a dashboard CSV file and return a dictionary of CallDetail objects.
+
+    Args:
+        config (Files): Configuration object with client, dashboard path, carrier, and rates.
+        call_details (Optional[dict[str, CallDetail]]): Existing dictionary of call details.
+
+    Returns:
+        dict[str, CallDetail]: Processed call details keyed by hash.
+    """
     if call_details is None:
         call_details = {}
 
-    print(f"- Reading dashboard file {file_path}...")
-    df1 = pd.read_csv(file_path, low_memory=False).astype(str)
+    print(f"- Reading dashboard file {config.dashboard}...")
+    df1 = pd.read_csv(config.dashboard, low_memory=False).astype(str)
 
-    for index, row in df1.iterrows():
+    for _, row in df1.iterrows():
         call_detail = CallDetail(
-            client=client,
+            client=config.client,
             sequence_id=row["Sequence ID"],
             user_name=row["User name"],
             call_from=row["Call from"],
@@ -27,7 +36,7 @@ def process_dashboard_csv(
             ringing_time=row["Ringing time"],
             call_duration=row["Call duration"],
             call_memo=row["Call memo"],
-            carrier=carrier,
+            carrier=config.carrier,
             config=config,
         )
 
@@ -44,6 +53,7 @@ def process_dashboard_csv(
 
 
 def round_up_duration_minutes(call_duration: str) -> int:
+    """Round up call duration to minutes."""
     try:
         if ":" in call_duration:
             h, m, s = map(int, call_duration.split(":"))
@@ -57,6 +67,7 @@ def round_up_duration_minutes(call_duration: str) -> int:
 
 
 def round_up_duration_seconds(call_duration: str) -> int:
+    """Round up call duration to seconds."""
     try:
         if ":" in call_duration:
             h, m, s = map(int, call_duration.split(":"))
@@ -70,13 +81,16 @@ def round_up_duration_seconds(call_duration: str) -> int:
 
 
 def save_merged_csv(call_details: dict[str, "CallDetail"], output_path: str) -> None:
+    """
+    Save merged call details to a CSV file, including rounded durations.
+    """
     print("- Saving merged CSV file...")
     call_details_list = []
-    for key, value in call_details.items():
+    for _, value in call_details.items():
         call_dict = value.to_dict()
         call_dict["Round up duration (minutes)"] = round_up_duration_minutes(call_dict["Call duration"])
         call_dict["Round up duration (seconds)"] = round_up_duration_seconds(call_dict["Call duration"])
         call_details_list.append(call_dict)
-    
+
     df = pd.DataFrame(call_details_list)
     df.to_csv(output_path, index=False)
