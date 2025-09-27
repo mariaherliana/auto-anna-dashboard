@@ -7,12 +7,14 @@ from datetime import datetime
 from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 
+# ------------------------
+# Page Setup
+# ------------------------
 st.set_page_config(
-    page_title="MiiTel CC Calculator",  # 👈 This changes the tab title
-    page_icon="📞",                       # 👈 Optional: add an emoji or favicon
-    layout="wide",                        # 👈 Optional: makes the app wider
+    page_title="MiiTel CC Calculator",  # 👈 Tab title
+    page_icon="📞",                      # 👈 Emoji/Favicon
+    layout="wide",                       # 👈 Wide layout
 )
-
 
 # ------------------------
 # Setup
@@ -63,13 +65,12 @@ rate_types = ["per_minute", "per_second"]
 # ------------------------
 # Page Navigation
 # ------------------------
-page = st.sidebar.radio("📂 Navigation", ["Calculator", "Admin Dashboard"])
+page = st.sidebar.radio("📂 Navigation", ["Calculator", "Manual", "Admin Dashboard"])
 
 # ------------------------
 # Calculator Page
 # ------------------------
 if page == "Calculator":
-    # Disclaimer only here
     st.info(
         "⚠️ **Disclaimer**: This call charge calculator is used to give an estimate of your call charge usage. "
         "The results provided are **not final**, and **international calls** may increase the estimated number."
@@ -77,10 +78,8 @@ if page == "Calculator":
 
     st.title("📞 Call Charge Calculator (Dashboard)")
 
-    # Upload CSV
     uploaded_file = st.file_uploader("Upload Dashboard CSV", type=["csv"], key="uploaded_file")
 
-    # Form inputs
     st.subheader("Client Configuration")
     client = st.text_input("Client ID (required)", key="client")
     rate = st.number_input("Rate (required)", min_value=0.0, value=720.0, key="rate")
@@ -118,19 +117,17 @@ if page == "Calculator":
     s2c_rate = st.number_input("S2C Rate", min_value=0.0, value=0.0, key="s2c_rate")
     s2c_rate_type = st.selectbox("S2C Rate Type", rate_types, index=0, key="s2c_rate_type")
 
-    # Process button
     if uploaded_file and client:
         if st.button("Process File"):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
                 tmp_input.write(uploaded_file.read())
                 tmp_input.flush()
 
-                # Always use Indosat by default
                 config = Files(
                     client=client,
                     dashboard=tmp_input.name,
                     output="output.csv",
-                    carrier="Indosat",
+                    carrier="Indosat",  # always use Indosat
                     number1=number1 if number1 else None,
                     number1_rate=number1_rate,
                     number1_rate_type=number1_rate_type,
@@ -149,11 +146,11 @@ if page == "Calculator":
 
                 call_details = process_dashboard_csv(config)
 
-                # Save processed file persistently
-                processed_file_path = os.path.join(PROCESSED_DIR, f"{client}_processed_{uuid.uuid4().hex[:6]}.csv")
+                processed_file_path = os.path.join(
+                    PROCESSED_DIR, f"{client}_processed_{uuid.uuid4().hex[:6]}.csv"
+                )
                 save_merged_csv(call_details, processed_file_path)
 
-                # Download button for user
                 with open(processed_file_path, "rb") as f:
                     st.download_button(
                         label="⬇️ Download Processed CSV",
@@ -162,12 +159,9 @@ if page == "Calculator":
                         mime="text/csv"
                     )
 
-                # Add log entry
                 add_log(client, uploaded_file.name, processed_file_path)
-
                 os.unlink(tmp_input.name)
 
-    # Reset button
     if st.button("🔄 Reset Form"):
         reset_form()
 
@@ -183,7 +177,6 @@ elif page == "Admin Dashboard":
             df_logs = pd.DataFrame(st.session_state["logs"])
             st.dataframe(df_logs, use_container_width=True)
 
-            # Download logs as CSV
             st.download_button(
                 "⬇️ Download Logs as CSV",
                 df_logs.to_csv(index=False),
@@ -208,3 +201,26 @@ elif page == "Admin Dashboard":
             st.info("No logs yet. Process a file to see history.")
     else:
         st.warning("Invalid or missing admin password.")
+
+# ------------------------
+# Manual Page
+# ------------------------
+elif page == "Manual":
+    st.title("📖 How to Use the Call Charge Calculator")
+
+    steps = [
+        "Step 1: Make sure you have downloaded the **call history list CSV** from the MiiTel Analytics Dashboard.",
+        "Step 2: Upload the related CSV into the calculator.",
+        "Step 3: Input the **client info** and **call charge settings**.",
+        "Step 4: ⚠️ If you have **1 number with different rates** for different chargeable call types, "
+        "you must input the number one by one and adjust the rate and chargeable call types.",
+        "Step 5: Make sure you set the **default rate correctly**.",
+        "Step 6: For charged incoming calls, please include both **incoming call** and **answering machine** in chargeable call types.",
+        "Step 7: If you don't have any special number or settings, just simply set the default rate.",
+        "Step 8: In the processed CSV, you will see:\n   - **Round up duration (minutes)** → for per-minute users (rounded per call).\n   - **Round up duration (seconds)** → for per-second users (total duration in seconds).",
+        "Step 9: ⚠️ For international calls, the amount from this calculator is only an **estimation**. "
+        "The proper calculation can be requested from the **MiiTel FA team** through the Request CDR form.",
+    ]
+
+    for step in steps:
+        st.markdown(f"- {step}")
