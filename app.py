@@ -52,7 +52,7 @@ def add_log(client, file_name, file_path, status="Processed"):
 # ------------------------
 call_types = [
     "outbound call",
-    "predictive dialer",
+    "predictive_dial",
     "incoming call",
     "play_sound",
     "read_dtmf",
@@ -88,7 +88,7 @@ if page == "Calculator":
     chargeable_call_types = st.multiselect(
         "Chargeable Call Types",
         call_types,
-        default=["outbound call", "predictive dialer"],
+        default=["outbound call", "predictive_dial"],
         key="chargeable_call_types"
     )
 
