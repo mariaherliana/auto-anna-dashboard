@@ -28,6 +28,7 @@ def process_dashboard_csv(
             call_duration=row["Call duration"],
             call_memo=row["Call memo"],
             carrier=carrier,
+            config=config,
         )
 
         key = call_detail.hash_key()
