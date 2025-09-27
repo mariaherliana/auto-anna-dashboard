@@ -11,16 +11,18 @@ from src.FileConfig import Files
 # Page Setup
 # ------------------------
 st.set_page_config(
-    page_title="MiiTel CC Calculator",  # 👈 Tab title
-    page_icon="📞",                      # 👈 Emoji/Favicon
-    layout="wide",                       # 👈 Wide layout
+    page_title="MiiTel CC Calculator",
+    page_icon="📞",
+    layout="wide",
 )
 
 # ------------------------
 # Setup
 # ------------------------
 PROCESSED_DIR = "processed_files"
+LOGS_DIR = os.path.join(PROCESSED_DIR, "logs")
 os.makedirs(PROCESSED_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
 
 # ------------------------
 # Reset function
@@ -31,13 +33,35 @@ def reset_form():
     st.rerun()
 
 # ------------------------
-# Initialize logs in session
+# Logs Utilities
 # ------------------------
-if "logs" not in st.session_state:
-    st.session_state["logs"] = []
+def get_log_file(year: str, month: str) -> str:
+    """Return the log file path for a given year and month."""
+    return os.path.join(LOGS_DIR, f"logs_{year}_{month}.csv")
+
+def get_current_log_file() -> str:
+    """Return the current month's log file path."""
+    return get_log_file(datetime.now().strftime("%Y"), datetime.now().strftime("%m"))
+
+def load_logs(year: str, month: str) -> list[dict]:
+    """Load logs for a specific year-month."""
+    log_file = get_log_file(year, month)
+    if os.path.exists(log_file):
+        df = pd.read_csv(log_file)
+        return df.to_dict(orient="records")
+    return []
+
+def save_log(log_entry: dict) -> None:
+    """Append a log entry to the current month's log file."""
+    log_file = get_current_log_file()
+    df = pd.DataFrame([log_entry])
+    if os.path.exists(log_file):
+        df.to_csv(log_file, mode="a", header=False, index=False)
+    else:
+        df.to_csv(log_file, index=False)
 
 def add_log(client, original_file_name, processed_file_path, status="Processed"):
-    """Add a processing log entry to session state."""
+    """Add log entry to persistent storage."""
     log_id = str(uuid.uuid4())[:8]
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -50,7 +74,8 @@ def add_log(client, original_file_name, processed_file_path, status="Processed")
         "Date Processed": now,
         "Status": status,
     }
-    st.session_state["logs"].append(log_entry)
+
+    save_log(log_entry)
 
 # ------------------------
 # Constants
@@ -99,21 +124,13 @@ if page == "Calculator":
     number1 = st.text_input("Special Number 1 (optional)", key="number1")
     number1_rate = st.number_input("Number 1 Rate", min_value=0.0, value=0.0, key="number1_rate")
     number1_rate_type = st.selectbox("Number 1 Rate Type", rate_types, index=0, key="number1_rate_type")
-    number1_chargeable = st.multiselect(
-        "Number 1 Chargeable Call Types",
-        call_types,
-        key="number1_chargeable"
-    )
+    number1_chargeable = st.multiselect("Number 1 Chargeable Call Types", call_types, key="number1_chargeable")
 
     # Number 2
     number2 = st.text_input("Special Number 2 (optional)", key="number2")
     number2_rate = st.number_input("Number 2 Rate", min_value=0.0, value=0.0, key="number2_rate")
     number2_rate_type = st.selectbox("Number 2 Rate Type", rate_types, index=0, key="number2_rate_type")
-    number2_chargeable = st.multiselect(
-        "Number 2 Chargeable Call Types",
-        call_types,
-        key="number2_chargeable"
-    )
+    number2_chargeable = st.multiselect("Number 2 Chargeable Call Types", call_types, key="number2_chargeable")
 
     # S2C
     s2c = st.text_input("S2C Number (optional)", key="s2c")
@@ -176,32 +193,42 @@ elif page == "Admin Dashboard":
 
     admin_pass = st.text_input("Enter admin password", type="password")
     if admin_pass == "supersecret":  # 🔒 Replace with env variable in production
-        if st.session_state["logs"]:
-            df_logs = pd.DataFrame(st.session_state["logs"])
-            st.dataframe(df_logs, use_container_width=True)
+        # Month selector
+        log_files = sorted([f for f in os.listdir(LOGS_DIR) if f.endswith(".csv")])
+        if log_files:
+            months = [f.replace("logs_", "").replace(".csv", "") for f in log_files]
+            selected_month = st.selectbox("Select month", months, index=len(months) - 1)
+            year, month = selected_month.split("_")
+            logs = load_logs(year, month)
 
-            st.download_button(
-                "⬇️ Download Logs as CSV",
-                df_logs.to_csv(index=False),
-                "processing_logs.csv",
-                "text/csv"
-            )
+            if logs:
+                df_logs = pd.DataFrame(logs)
+                st.dataframe(df_logs, use_container_width=True)
 
-            st.markdown("### 📂 Processed Files")
-            for log in st.session_state["logs"]:
-                if os.path.exists(log["File Path"]):
-                    with open(log["File Path"], "rb") as f:
-                        st.download_button(
-                            label=f"⬇️ Download {log['Processed File']}",
-                            data=f,
-                            file_name=log["Processed File"],
-                            mime="text/csv",
-                            key=f"dl_{log['Log ID']}"
-                        )
-                else:
-                    st.text(f"⚠️ File not found: {log['Processed File']}")
+                st.download_button(
+                    "⬇️ Download Logs as CSV",
+                    df_logs.to_csv(index=False),
+                    f"processing_logs_{selected_month}.csv",
+                    "text/csv"
+                )
+
+                st.markdown("### 📂 Processed Files")
+                for log in logs:
+                    if os.path.exists(log["File Path"]):
+                        with open(log["File Path"], "rb") as f:
+                            st.download_button(
+                                label=f"⬇️ Download {log['Processed File']}",
+                                data=f,
+                                file_name=log["Processed File"],
+                                mime="text/csv",
+                                key=f"dl_{log['Log ID']}"
+                            )
+                    else:
+                        st.text(f"⚠️ File not found: {log['Processed File']}")
+            else:
+                st.info("No logs available for this month.")
         else:
-            st.info("No logs yet. Process a file to see history.")
+            st.info("No logs found.")
     else:
         st.warning("Invalid or missing admin password.")
 
@@ -222,8 +249,6 @@ elif page == "Manual":
         "Step 8: In the processed CSV, you will find: - **Round-up duration (minutes)**: for per-minute users (rounded per call). - **Round-up duration (seconds)**: for per-second users (total duration in seconds).",
         "Step 9: ⚠️ For international calls, this calculator only gives **an estimate**. The official calculation can be requested from the **MiiTel FA team** via the **Request CDR form**.",
     ]
-
-
 
     for step in steps:
         st.markdown(f"- {step}")
