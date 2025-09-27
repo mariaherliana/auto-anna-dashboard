@@ -36,14 +36,17 @@ def reset_form():
 if "logs" not in st.session_state:
     st.session_state["logs"] = []
 
-def add_log(client, file_name, file_path, status="Processed"):
+def add_log(client, original_file_name, processed_file_path, status="Processed"):
+    """Add a processing log entry to session state."""
     log_id = str(uuid.uuid4())[:8]
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     log_entry = {
         "Log ID": log_id,
         "Tenant ID": client,
-        "File Name": file_name,
-        "File Path": file_path,
+        "Original File": original_file_name,
+        "Processed File": os.path.basename(processed_file_path),
+        "File Path": processed_file_path,
         "Date Processed": now,
         "Status": status,
     }
@@ -186,17 +189,17 @@ elif page == "Admin Dashboard":
 
             st.markdown("### 📂 Processed Files")
             for log in st.session_state["logs"]:
-                if "File Path" in log and os.path.exists(log["File Path"]):
+                if os.path.exists(log["File Path"]):
                     with open(log["File Path"], "rb") as f:
                         st.download_button(
-                            label=f"⬇️ Download {log['File Name']}",
+                            label=f"⬇️ Download {log['Processed File']}",
                             data=f,
-                            file_name=log["File Name"],
+                            file_name=log["Processed File"],
                             mime="text/csv",
                             key=f"dl_{log['Log ID']}"
                         )
                 else:
-                    st.text(f"⚠️ File for {log['File Name']} not found.")
+                    st.text(f"⚠️ File not found: {log['Processed File']}")
         else:
             st.info("No logs yet. Process a file to see history.")
     else:
