@@ -209,15 +209,15 @@ elif page == "Manual":
     st.title("📖 How to Use the Call Charge Calculator")
 
     steps = [
-        "Step 1: Download the call history CSV from the MiiTel Analytics Dashboard.",
+        "Step 1: Download the **call history CSV** from the **MiiTel Analytics Dashboard**.",
         "Step 2: Upload the CSV file into the calculator.",
-        "Step 3: Enter the client information and call charge settings.",
-        "Step 4: ⚠️ If one number has different rates for different call types, input the number separately for each rate and adjust the chargeable call types accordingly.",
-        "Step 5: Set the default rate correctly.",
-        "Step 6: For charged incoming calls, include both Incoming Call and Answering Machine as chargeable call types.",
+        "Step 3: Enter the **client information** and **call charge settings**.",
+        "Step 4: ⚠️ If **one number has different rates** for different call types, input the number separately for each rate and adjust the chargeable call types accordingly.",
+        "Step 5: Set the **default rate correctly**.",
+        "Step 6: For charged incoming calls, include all types from **incoming call** to **answering machine** as chargeable call types.",
         "Step 7: If there are no special numbers or settings, simply use the default rate.",
-        "Step 8: In the processed CSV, you will find: - Round-up duration (minutes): for per-minute users (rounded per call). - Round-up duration (seconds): for per-second users (total duration in seconds).",
-        "Step 9: ⚠️ For international calls, this calculator only gives an estimate. The official calculation can be requested from the MiiTel FA team via the Request CDR form.",
+        "Step 8: In the processed CSV, you will find: - **Round-up duration (minutes)**: for per-minute users (rounded per call). - **Round-up duration (seconds)**: for per-second users (total duration in seconds).",
+        "Step 9: ⚠️ For international calls, this calculator only gives **an estimate**. The official calculation can be requested from the **MiiTel FA team** via the **Request CDR form**.",
     ]
 
 
