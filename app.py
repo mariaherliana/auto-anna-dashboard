@@ -147,11 +147,7 @@ if page == "Calculator":
                     chargeable_call_types=chargeable_call_types,
                 )
 
-                call_details = process_dashboard_csv(
-                    file_path=config.dashboard,
-                    carrier="Indosat",
-                    client=config.client
-                )
+                call_details = process_dashboard_csv(config)
 
                 # Save processed file persistently
                 processed_file_path = os.path.join(PROCESSED_DIR, f"{client}_processed_{uuid.uuid4().hex[:6]}.csv")
