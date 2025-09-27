@@ -78,7 +78,7 @@ class CallDetail:
         call_from = str(self.call_from or "").strip()
         call_type = (self.call_type or "").strip().lower()
         number_type = self.number_type.lower() if self.number_type else ""
-        chargeable_types = [ct.lower() for ct in config.chargeable_call_types] if config.chargeable_call_types else ["outbound call", "predictive dialer"]
+        chargeable_types = [ct.lower() for ct in config.chargeable_call_types] if config.chargeable_call_types else ["outbound call", "predictive_dial"]
 
         if not config:
             return self.calculate_per_minute_charge(720)
