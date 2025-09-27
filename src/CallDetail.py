@@ -92,7 +92,7 @@ class CallDetail:
         chargeable_types = (
             [ct.lower() for ct in (self.config.chargeable_call_types or [])]
             if self.config.chargeable_call_types
-            else ["outbound call", "predictive dialer"]
+            else ["outbound call", "predictive_dial"]
         )
 
         # Siemens special handling
