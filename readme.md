@@ -1,4 +1,4 @@
-# Auto-anna 
+# Auto-anna Terminal-version
 
 This script takes in two CSV files, merges them, and outputs a new CSV file with combined data from both tables.
 It also standardizes date-times into ISO format, and cleans phone number formats.
