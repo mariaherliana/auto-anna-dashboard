@@ -8,6 +8,7 @@ from datetime import datetime, date
 from typing import List, Dict, Any
 from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
+import logging
 
 # ------------------------
 # Page Setup
@@ -27,6 +28,14 @@ CDR_DIR = os.path.join(PROCESSED_DIR, "cdr_requests")
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(CDR_DIR, exist_ok=True)
+
+# setup a backend log file for debugging backend behavior
+BACKEND_LOG_FILE = os.path.join(LOGS_DIR, "backend_activity.log")
+logging.basicConfig(
+    filename=BACKEND_LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # ------------------------
 # Helpers — monthly log filenames
@@ -65,19 +74,28 @@ def write_records_to_csv(file_path: str, records: List[Dict[str, Any]]) -> None:
 # Processing logs
 # ------------------------
 def add_processing_log(client: str, original_file_name: str, processed_file_path: str, status: str = "Processed"):
-    month_key = month_key_from_date()
-    file_path = processing_log_file_for(month_key)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    entry = {
-        "Log ID": str(uuid.uuid4())[:8],
-        "Tenant ID": client,
-        "Original File": original_file_name,
-        "Processed File": os.path.basename(processed_file_path),
-        "File Path": processed_file_path,
-        "Date Processed": now,
-        "Status": status,
-    }
-    append_row_to_csv(file_path, entry)
+    try:
+        month_key = month_key_from_date()
+        file_path = os.path.abspath(processing_log_file_for(month_key))
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        processing_id = str(uuid.uuid4())[:8]
+        entry = {
+            "Processing ID": processing_id,
+            "Client": client,
+            "Original File": original_file_name,
+            "Processed File": os.path.basename(processed_file_path),
+            "File Path": processed_file_path,
+            "Date Processed": now,
+            "Status": status,
+        }
+
+        append_row_to_csv(file_path, entry)
+        logging.info(f"New processing log added: {entry}")
+
+    except Exception as e:
+        logging.error(f"Failed to add processing log for {client}: {e}")
 
 def load_processing_logs_for_month(month_key: str) -> List[Dict[str, Any]]:
     return load_csv_as_records(processing_log_file_for(month_key))
