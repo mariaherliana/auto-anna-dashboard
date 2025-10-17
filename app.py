@@ -27,17 +27,32 @@ SUPABASE_KEY = st.secrets["SUPABASE"]["key"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ------------------------
-# Supabase Storage Helper
+# Supabase Storage Helper (revised)
 # ------------------------
 def upload_to_supabase_bucket(local_path: str, bucket_name: str = "processed-files") -> str:
-    """Uploads a file to a Supabase Storage bucket and returns its public URL."""
+    """Uploads a local CSV to Supabase Storage and returns its public URL."""
     try:
-        file_name = os.path.basename(local_path)
-        storage_path = f"processed_files/{file_name}"  # keep same folder structure
+        bucket = supabase.storage.from_(bucket_name)
+
+        # Open and read file bytes
         with open(local_path, "rb") as f:
-            supabase.storage.from_(bucket_name).upload(storage_path, f, {"upsert": True})
-        public_url = supabase.storage.from_(bucket_name).get_public_url(storage_path)
+            file_bytes = f.read()
+
+        # Keep the same subfolder name for organization
+        file_name = os.path.basename(local_path)
+        storage_key = f"processed_files/{file_name}"
+
+        # Upload with proper content type
+        bucket.upload(
+            storage_key,
+            file_bytes,
+            {"content-type": "text/csv"}
+        )
+
+        # Get public URL
+        public_url = bucket.get_public_url(storage_key)
         return public_url
+
     except Exception as e:
         logging.error(f"Failed to upload {local_path} to Supabase Storage: {e}")
         return None
