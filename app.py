@@ -27,6 +27,21 @@ SUPABASE_KEY = st.secrets["SUPABASE"]["key"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ------------------------
+# Supabase Storage Helper
+# ------------------------
+def upload_to_supabase_bucket(local_path: str, bucket_name: str = "calculator_results") -> str:
+    """Uploads a file to a Supabase Storage bucket and returns its public URL."""
+    try:
+        file_name = os.path.basename(local_path)
+        with open(local_path, "rb") as f:
+            supabase.storage.from_(bucket_name).upload(file_name, f, {"upsert": True})
+        public_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
+        return public_url
+    except Exception as e:
+        logging.error(f"Failed to upload {local_path} to Supabase Storage: {e}")
+        return None
+
+# ------------------------
 # Directories (local cache for processed files)
 # ------------------------
 PROCESSED_DIR = "processed_files"
@@ -192,8 +207,16 @@ if page == "Calculator":
                     processed_file_path = os.path.join(PROCESSED_DIR, processed_fname)
                     save_merged_csv(call_details, processed_file_path)
 
+                    # Upload processed file to Supabase Storage
+                    public_url = upload_to_supabase_bucket(processed_file_path)
+                    
                     # Log calculation to Supabase
-                    log_calculation(client.strip(), getattr(uploaded_file, "name", processed_fname), processed_fname, processed_file_path)
+                    log_calculation(
+                        client.strip(),
+                        getattr(uploaded_file, "name", processed_fname),
+                        processed_fname,
+                        public_url or processed_file_path
+                    )
 
                     # Provide download
                     with open(processed_file_path, "rb") as f:
@@ -266,7 +289,9 @@ elif page == "Admin Dashboard":
             for idx, row in df_logs.iterrows():
                 path = row.get("file_path")
                 fname = row.get("processed_file")
-                if path and os.path.exists(path):
+                if path and path.startswith("http"):
+                    st.markdown(f"[⬇️ Download {fname}]({path})")
+                elif path and os.path.exists(path):
                     with open(path, "rb") as f:
                         st.download_button(f"⬇️ {fname}", f, fname, "text/csv", key=f"proc_{idx}")
 
