@@ -9,7 +9,6 @@ from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 import logging
 from supabase import create_client, Client
-import requests
 
 # ------------------------
 # Page Setup
@@ -47,22 +46,21 @@ logging.basicConfig(
 # Logging Functions (Supabase)
 # ------------------------
 def log_calculation(client: str, original_file: str, processed_file: str, local_file_path: str, status="Processed"):
+    """
+    Uploads CSV to Supabase bucket and logs calculation metadata.
+    """
     try:
+        # Upload CSV to bucket
         bucket_name = "calculator_results"
-        file_key = f"{client}/{processed_file}"
+        file_key = f"{client}/{processed_file}"  # organize by client folder
 
-        # Upload file
         with open(local_file_path, "rb") as f:
-            result = supabase.storage.from_(bucket_name).upload(file_key, f, overwrite=True)
-        if result.get("error"):
-            logging.error(f"Supabase upload failed: {result['error']}")
-            return
+            supabase.storage.from_(bucket_name).upload(file_key, f, overwrite=True)
 
+        # Get public URL (or signed URL if bucket is private)
         file_url = supabase.storage.from_(bucket_name).get_public_url(file_key).url
-        if not file_url:
-            logging.error(f"Failed to get file URL for {file_key}")
-            return
 
+        # Prepare metadata for Supabase table
         data = {
             "client": client,
             "original_file": original_file,
@@ -72,11 +70,8 @@ def log_calculation(client: str, original_file: str, processed_file: str, local_
             "status": status
         }
 
-        resp = supabase.table("calculator_logs").insert([data]).execute()
-        if getattr(resp, "error", None):
-            logging.error(f"Supabase insert failed: {resp.error}")
-        else:
-            logging.info(f"Logged calculation for {client}: {data}")
+        response = supabase.table("calculator_logs").insert([data]).execute()
+        logging.info(f"Logged calculation for {client}: {data}, response: {response}")
 
     except Exception as e:
         logging.error(f"Failed to log calculation for {client}: {e}")
@@ -93,10 +88,9 @@ def log_cdr_request(tenant_id: str, email: str, date_from: date, date_to: date, 
             "status": status
         }
         response = supabase.table("cdr_requests").insert([data]).execute()
-        if getattr(response, "error", None):
-            logging.error(f"Supabase insert failed: {response.error}")
-        else:
-            logging.info(f"Logged CDR request for tenant {tenant_id}")
+        logging.info(f"Logged CDR request for tenant {tenant_id}: {data}, response: {response}")
+    except Exception as e:
+        logging.error(f"Failed to log CDR request for tenant {tenant_id}: {e}")
 
 # ------------------------
 # Admin Utilities
@@ -185,19 +179,13 @@ if page == "Calculator":
     if uploaded_file is not None and client.strip():
         if st.button("Process File"):
             with st.spinner("Processing dashboard CSV... this may take a moment. Please wait."):
-                tmp_input_path = None
-                processed_file_path = None
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
+                    tmp_input.write(uploaded_file.read())
+                    tmp_input.flush()
                 try:
-                    # Save uploaded CSV to temp file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
-                        tmp_input.write(uploaded_file.read())
-                        tmp_input.flush()
-                        tmp_input_path = tmp_input.name
-    
-                    # Prepare configuration
                     config = Files(
                         client=client.strip(),
-                        dashboard=tmp_input_path,
+                        dashboard=tmp_input.name,
                         output="output.csv",
                         carrier="Indosat",
                         number1=number1 if number1 else None,
@@ -215,43 +203,28 @@ if page == "Calculator":
                         s2c_rate_type=s2c_rate_type,
                         chargeable_call_types=chargeable_call_types,
                     )
-    
-                    # Process CSV
                     call_details = process_dashboard_csv(config)
-    
-                    # Save processed CSV
                     processed_fname = f"{client}_processed_{uuid.uuid4().hex[:6]}.csv"
                     processed_file_path = os.path.join(PROCESSED_DIR, processed_fname)
                     save_merged_csv(call_details, processed_file_path)
-    
+
                     # Log calculation to Supabase
-                    log_calculation(
-                        client.strip(),
-                        getattr(uploaded_file, "name", processed_fname),
-                        processed_fname,
-                        processed_file_path
-                    )
-    
-                    # Read processed file into memory, then close file
+                    log_calculation(client.strip(), getattr(uploaded_file, "name", processed_fname), processed_fname, processed_file_path)
+
+                    # Provide download
                     with open(processed_file_path, "rb") as f:
-                        file_bytes = f.read()
-    
-                    # Provide download button
-                    st.download_button(
-                        label="⬇️ Download Processed CSV",
-                        data=file_bytes,
-                        file_name=f"{client}_processed.csv",
-                        mime="text/csv",
-                    )
-    
+                        st.download_button(
+                            label="⬇️ Download Processed CSV",
+                            data=f,
+                            file_name=f"{client}_processed.csv",
+                            mime="text/csv",
+                        )
                     st.success("Processing complete. File is available for download and stored for admin review.")
-    
                 finally:
-                    # Cleanup temp files
-                    if tmp_input_path and os.path.exists(tmp_input_path):
-                        os.unlink(tmp_input_path)
-                    if processed_file_path and os.path.exists(processed_file_path):
-                        os.unlink(processed_file_path)
+                    try:
+                        os.unlink(tmp_input.name)
+                    except Exception:
+                        pass
     else:
         st.info("Please upload a dashboard CSV and enter Client ID to enable processing.")
 
@@ -303,25 +276,15 @@ elif page == "Admin Dashboard":
             logs = fetch_calculator_logs(month)
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs)
-            st.download_button(
-                "⬇️ Download Logs CSV",
-                df_logs.to_csv(index=False),
-                f"calculator_logs_{month}.csv",
-                "text/csv"
-            )
-        
-            st.markdown("#### Download Processed Files")
+            st.download_button("⬇️ Download Logs CSV", df_logs.to_csv(index=False), f"calculator_logs_{month}.csv", "text/csv")
+
+            # Download processed files
             for idx, row in df_logs.iterrows():
-            fname = row.get("processed_file")
-            file_url = row.get("file_url")
-            if file_url:
-                resp = requests.get(file_url)
-                st.download_button(
-                    label=f"⬇️ {fname}",
-                    data=resp.content,
-                    file_name=fname,
-                    mime="text/csv"
-                )
+                path = row.get("file_path")
+                fname = row.get("processed_file")
+                if path and os.path.exists(path):
+                    with open(path, "rb") as f:
+                        st.download_button(f"⬇️ {fname}", f, fname, "text/csv", key=f"proc_{idx}")
 
         elif tab == "CDR Requests":
             requests = fetch_cdr_requests(month)
