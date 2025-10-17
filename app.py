@@ -276,15 +276,21 @@ elif page == "Admin Dashboard":
             logs = fetch_calculator_logs(month)
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs)
-            st.download_button("⬇️ Download Logs CSV", df_logs.to_csv(index=False), f"calculator_logs_{month}.csv", "text/csv")
-
-            # Download processed files
+            st.download_button(
+                "⬇️ Download Logs CSV",
+                df_logs.to_csv(index=False),
+                f"calculator_logs_{month}.csv",
+                "text/csv"
+            )
+        
+            st.markdown("#### Download Processed Files")
             for idx, row in df_logs.iterrows():
-                path = row.get("file_path")
                 fname = row.get("processed_file")
-                if path and os.path.exists(path):
-                    with open(path, "rb") as f:
-                        st.download_button(f"⬇️ {fname}", f, fname, "text/csv", key=f"proc_{idx}")
+                file_url = row.get("file_url")
+                if file_url:
+                    st.markdown(f"- [{fname}]({file_url})", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"- {fname} (file URL not available)")
 
         elif tab == "CDR Requests":
             requests = fetch_cdr_requests(month)
