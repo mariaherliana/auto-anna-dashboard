@@ -29,13 +29,14 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ------------------------
 # Supabase Storage Helper
 # ------------------------
-def upload_to_supabase_bucket(local_path: str, bucket_name: str = "calculator_results") -> str:
+def upload_to_supabase_bucket(local_path: str, bucket_name: str = "processed-files") -> str:
     """Uploads a file to a Supabase Storage bucket and returns its public URL."""
     try:
         file_name = os.path.basename(local_path)
+        storage_path = f"processed_files/{file_name}"  # keep same folder structure
         with open(local_path, "rb") as f:
-            supabase.storage.from_(bucket_name).upload(file_name, f, {"upsert": True})
-        public_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
+            supabase.storage.from_(bucket_name).upload(storage_path, f, {"upsert": True})
+        public_url = supabase.storage.from_(bucket_name).get_public_url(storage_path)
         return public_url
     except Exception as e:
         logging.error(f"Failed to upload {local_path} to Supabase Storage: {e}")
