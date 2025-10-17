@@ -79,16 +79,34 @@ def log_cdr_request(tenant_id: str, email: str, date_from: date, date_to: date, 
 # ------------------------
 # Admin Utilities
 # ------------------------
+def parse_supabase_timestamp(ts: str) -> datetime:
+    """
+    Converts Supabase TIMESTAMP string to datetime object, stripping trailing Z or fractional seconds if needed.
+    """
+    ts_clean = ts.split('.')[0]  # remove fractional seconds
+    ts_clean = ts_clean.replace('Z','')  # remove trailing Z if UTC
+    return datetime.fromisoformat(ts_clean)
+
 def fetch_calculator_logs(month: int = None) -> List[Dict[str, Any]]:
     logs = supabase.table("calculator_logs").select("*").execute().data
     if month:
-        logs = [log for log in logs if datetime.fromisoformat(log["date_processed"]).month == month]
+        filtered = []
+        for log in logs:
+            dt = parse_supabase_timestamp(log["date_processed"])
+            if dt.month == month:
+                filtered.append(log)
+        logs = filtered
     return logs
 
 def fetch_cdr_requests(month: int = None) -> List[Dict[str, Any]]:
     requests = supabase.table("cdr_requests").select("*").execute().data
     if month:
-        requests = [req for req in requests if datetime.fromisoformat(req["date_submitted"]).month == month]
+        filtered = []
+        for req in requests:
+            dt = parse_supabase_timestamp(req["date_submitted"])
+            if dt.month == month:
+                filtered.append(req)
+        requests = filtered
     return requests
 
 def update_cdr_status(request_id: int, new_status: str):
@@ -232,7 +250,10 @@ elif page == "Admin Dashboard":
     if admin_pass != "supersecret":
         st.warning("Invalid password.")
     else:
+        # Select month filter (integer)
         month = st.selectbox("Select Month", list(range(1,13)), index=datetime.now().month-1)
+
+        # Choose tab
         tab = st.radio("Admin Section", ["Processing Logs", "CDR Requests"])
 
         if tab == "Processing Logs":
@@ -240,6 +261,8 @@ elif page == "Admin Dashboard":
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs)
             st.download_button("⬇️ Download Logs CSV", df_logs.to_csv(index=False), f"calculator_logs_{month}.csv", "text/csv")
+
+            # Download processed files
             for idx, row in df_logs.iterrows():
                 path = row.get("file_path")
                 fname = row.get("processed_file")
@@ -252,11 +275,17 @@ elif page == "Admin Dashboard":
             df_req = pd.DataFrame(requests)
             st.dataframe(df_req)
             st.download_button("⬇️ Download CDR Requests CSV", df_req.to_csv(index=False), f"cdr_requests_{month}.csv", "text/csv")
+
             st.markdown("#### Update Request Status")
             for i, rec in df_req.iterrows():
                 req_id = rec.get("request_id")
                 current_status = rec.get("status","Pending")
-                new_status = st.selectbox(f"Status for {req_id}", ["Pending","In Progress","Completed","Rejected"], index=["Pending","In Progress","Completed","Rejected"].index(current_status) if current_status in ["Pending","In Progress","Completed","Rejected"] else 0, key=f"status_{req_id}")
+                new_status = st.selectbox(
+                    f"Status for {req_id}",
+                    ["Pending","In Progress","Completed","Rejected"],
+                    index=["Pending","In Progress","Completed","Rejected"].index(current_status) if current_status in ["Pending","In Progress","Completed","Rejected"] else 0,
+                    key=f"status_{req_id}"
+                )
                 if st.button(f"Update {req_id}", key=f"upd_{req_id}"):
                     update_cdr_status(req_id, new_status)
                     st.success(f"Updated {req_id} to {new_status}")
