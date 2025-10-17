@@ -52,11 +52,11 @@ def log_calculation(client: str, original_file: str, processed_file: str, file_p
             "original_file": original_file,
             "processed_file": processed_file,
             "file_path": file_path,
-            "date_processed": datetime.now(),
+            "date_processed": datetime.now().isoformat(),
             "status": status
         }
-        supabase.table("calculator_logs").insert(data).execute()
-        logging.info(f"Logged calculation for {client}: {data}")
+        response = supabase.table("calculator_logs").insert([data]).execute()
+        logging.info(f"Logged calculation for {client}: {data}, response: {response}")
     except Exception as e:
         logging.error(f"Failed to log calculation for {client}: {e}")
 
@@ -65,14 +65,14 @@ def log_cdr_request(tenant_id: str, email: str, date_from: date, date_to: date, 
         data = {
             "tenant_id": tenant_id,
             "email": email,
-            "date_from": date_from,
-            "date_to": date_to,
+            "date_from": date_from.isoformat() if isinstance(date_from, date) else date_from,
+            "date_to": date_to.isoformat() if isinstance(date_to, date) else date_to,
             "reason": reason,
-            "date_submitted": datetime.now(),
+            "date_submitted": datetime.now().isoformat(),
             "status": status
         }
-        supabase.table("cdr_requests").insert(data).execute()
-        logging.info(f"Logged CDR request for tenant {tenant_id}: {data}")
+        response = supabase.table("cdr_requests").insert([data]).execute()
+        logging.info(f"Logged CDR request for tenant {tenant_id}: {data}, response: {response}")
     except Exception as e:
         logging.error(f"Failed to log CDR request for tenant {tenant_id}: {e}")
 
