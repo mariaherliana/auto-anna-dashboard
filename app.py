@@ -289,7 +289,7 @@ elif page == "Admin Dashboard":
                 if st.button(f"Update {req_id}", key=f"upd_{req_id}"):
                     update_cdr_status(req_id, new_status)
                     st.success(f"Updated {req_id} to {new_status}")
-                    st.experimental_rerun()
+                    st.rerun()
 
 # ------------------------
 # Manual Page (unchanged)
