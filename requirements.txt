@@ -7,3 +7,6 @@ openpyxl
 
 # Phone number parsing
 phonenumbers
+
+#database
+supabase
