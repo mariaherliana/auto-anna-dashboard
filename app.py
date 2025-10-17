@@ -9,6 +9,7 @@ from src.csv_processing import process_dashboard_csv, save_merged_csv
 from src.FileConfig import Files
 import logging
 from supabase import create_client, Client
+import requests
 
 # ------------------------
 # Page Setup
@@ -46,21 +47,22 @@ logging.basicConfig(
 # Logging Functions (Supabase)
 # ------------------------
 def log_calculation(client: str, original_file: str, processed_file: str, local_file_path: str, status="Processed"):
-    """
-    Uploads CSV to Supabase bucket and logs calculation metadata.
-    """
     try:
-        # Upload CSV to bucket
         bucket_name = "calculator_results"
-        file_key = f"{client}/{processed_file}"  # organize by client folder
+        file_key = f"{client}/{processed_file}"
 
+        # Upload file
         with open(local_file_path, "rb") as f:
-            supabase.storage.from_(bucket_name).upload(file_key, f, overwrite=True)
+            result = supabase.storage.from_(bucket_name).upload(file_key, f, overwrite=True)
+        if result.get("error"):
+            logging.error(f"Supabase upload failed: {result['error']}")
+            return
 
-        # Get public URL (or signed URL if bucket is private)
         file_url = supabase.storage.from_(bucket_name).get_public_url(file_key).url
+        if not file_url:
+            logging.error(f"Failed to get file URL for {file_key}")
+            return
 
-        # Prepare metadata for Supabase table
         data = {
             "client": client,
             "original_file": original_file,
@@ -70,8 +72,11 @@ def log_calculation(client: str, original_file: str, processed_file: str, local_
             "status": status
         }
 
-        response = supabase.table("calculator_logs").insert([data]).execute()
-        logging.info(f"Logged calculation for {client}: {data}, response: {response}")
+        resp = supabase.table("calculator_logs").insert([data]).execute()
+        if getattr(resp, "error", None):
+            logging.error(f"Supabase insert failed: {resp.error}")
+        else:
+            logging.info(f"Logged calculation for {client}: {data}")
 
     except Exception as e:
         logging.error(f"Failed to log calculation for {client}: {e}")
@@ -88,9 +93,10 @@ def log_cdr_request(tenant_id: str, email: str, date_from: date, date_to: date, 
             "status": status
         }
         response = supabase.table("cdr_requests").insert([data]).execute()
-        logging.info(f"Logged CDR request for tenant {tenant_id}: {data}, response: {response}")
-    except Exception as e:
-        logging.error(f"Failed to log CDR request for tenant {tenant_id}: {e}")
+        if getattr(response, "error", None):
+            logging.error(f"Supabase insert failed: {response.error}")
+        else:
+            logging.info(f"Logged CDR request for tenant {tenant_id}")
 
 # ------------------------
 # Admin Utilities
@@ -285,12 +291,16 @@ elif page == "Admin Dashboard":
         
             st.markdown("#### Download Processed Files")
             for idx, row in df_logs.iterrows():
-                fname = row.get("processed_file")
-                file_url = row.get("file_url")
-                if file_url:
-                    st.markdown(f"- [{fname}]({file_url})", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"- {fname} (file URL not available)")
+            fname = row.get("processed_file")
+            file_url = row.get("file_url")
+            if file_url:
+                resp = requests.get(file_url)
+                st.download_button(
+                    label=f"⬇️ {fname}",
+                    data=resp.content,
+                    file_name=fname,
+                    mime="text/csv"
+                )
 
         elif tab == "CDR Requests":
             requests = fetch_cdr_requests(month)
