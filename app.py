@@ -45,18 +45,34 @@ logging.basicConfig(
 # ------------------------
 # Logging Functions (Supabase)
 # ------------------------
-def log_calculation(client: str, original_file: str, processed_file: str, file_path: str, status="Processed"):
+def log_calculation(client: str, original_file: str, processed_file: str, local_file_path: str, status="Processed"):
+    """
+    Uploads CSV to Supabase bucket and logs calculation metadata.
+    """
     try:
+        # Upload CSV to bucket
+        bucket_name = "calculator_results"
+        file_key = f"{client}/{processed_file}"  # organize by client folder
+
+        with open(local_file_path, "rb") as f:
+            supabase.storage.from_(bucket_name).upload(file_key, f, overwrite=True)
+
+        # Get public URL (or signed URL if bucket is private)
+        file_url = supabase.storage.from_(bucket_name).get_public_url(file_key).url
+
+        # Prepare metadata for Supabase table
         data = {
             "client": client,
             "original_file": original_file,
             "processed_file": processed_file,
-            "file_path": file_path,
+            "file_url": file_url,
             "date_processed": datetime.now().isoformat(),
             "status": status
         }
+
         response = supabase.table("calculator_logs").insert([data]).execute()
         logging.info(f"Logged calculation for {client}: {data}, response: {response}")
+
     except Exception as e:
         logging.error(f"Failed to log calculation for {client}: {e}")
 
