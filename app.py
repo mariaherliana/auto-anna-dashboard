@@ -185,13 +185,19 @@ if page == "Calculator":
     if uploaded_file is not None and client.strip():
         if st.button("Process File"):
             with st.spinner("Processing dashboard CSV... this may take a moment. Please wait."):
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
-                    tmp_input.write(uploaded_file.read())
-                    tmp_input.flush()
+                tmp_input_path = None
+                processed_file_path = None
                 try:
+                    # Save uploaded CSV to temp file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_input:
+                        tmp_input.write(uploaded_file.read())
+                        tmp_input.flush()
+                        tmp_input_path = tmp_input.name
+    
+                    # Prepare configuration
                     config = Files(
                         client=client.strip(),
-                        dashboard=tmp_input.name,
+                        dashboard=tmp_input_path,
                         output="output.csv",
                         carrier="Indosat",
                         number1=number1 if number1 else None,
@@ -209,28 +215,43 @@ if page == "Calculator":
                         s2c_rate_type=s2c_rate_type,
                         chargeable_call_types=chargeable_call_types,
                     )
+    
+                    # Process CSV
                     call_details = process_dashboard_csv(config)
+    
+                    # Save processed CSV
                     processed_fname = f"{client}_processed_{uuid.uuid4().hex[:6]}.csv"
                     processed_file_path = os.path.join(PROCESSED_DIR, processed_fname)
                     save_merged_csv(call_details, processed_file_path)
-
+    
                     # Log calculation to Supabase
-                    log_calculation(client.strip(), getattr(uploaded_file, "name", processed_fname), processed_fname, processed_file_path)
-
-                    # Provide download
+                    log_calculation(
+                        client.strip(),
+                        getattr(uploaded_file, "name", processed_fname),
+                        processed_fname,
+                        processed_file_path
+                    )
+    
+                    # Read processed file into memory, then close file
                     with open(processed_file_path, "rb") as f:
-                        st.download_button(
-                            label="⬇️ Download Processed CSV",
-                            data=f,
-                            file_name=f"{client}_processed.csv",
-                            mime="text/csv",
-                        )
+                        file_bytes = f.read()
+    
+                    # Provide download button
+                    st.download_button(
+                        label="⬇️ Download Processed CSV",
+                        data=file_bytes,
+                        file_name=f"{client}_processed.csv",
+                        mime="text/csv",
+                    )
+    
                     st.success("Processing complete. File is available for download and stored for admin review.")
+    
                 finally:
-                    try:
-                        os.unlink(tmp_input.name)
-                    except Exception:
-                        pass
+                    # Cleanup temp files
+                    if tmp_input_path and os.path.exists(tmp_input_path):
+                        os.unlink(tmp_input_path)
+                    if processed_file_path and os.path.exists(processed_file_path):
+                        os.unlink(processed_file_path)
     else:
         st.info("Please upload a dashboard CSV and enter Client ID to enable processing.")
 
